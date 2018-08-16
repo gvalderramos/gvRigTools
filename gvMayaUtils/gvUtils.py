@@ -110,3 +110,51 @@ def connectVecAttrs(obj1="", attr1=['x', 'y', 'z'], obj2="", attr2=['x', 'y', 'z
 	else:
 		for i in range(len(attr1)):
 			cmds.connectAttr('%s.%s' % (obj1, attr1[i]), '%s.%s' % (obj2, attr2[i]), force=True)
+
+
+def create_parent(list=[]):
+	for i in range(len(list)):
+		if i+1 < len(list):
+			cmds.parent(list[i+1], list[i])
+
+def createFkCtrls(locs=[], prefix='', createJoints=True):
+
+	if createJoints:
+		jntList = []
+		
+		c = 1
+		for loc in locs:
+			cmds.select(clear=True)
+			jnt = cmds.joint(n='{}_{:02d}_Jnt'.format(prefix, c))
+			jntList.append(jnt)
+			cmds.delete(cmds.parentConstraint(loc, jnt))
+			cmds.makeIdentity(jnt, apply=True, t=True, r=True, s=True, n=False, pn=True)
+			c += 1
+		c = 1
+
+		create_parent(jntList)
+	else:
+		jntList=locs
+
+	ctrls = []
+	for i in range(len(jntList)):
+		ctrl = cmds.curve(n='{}_{:02d}_Ctrl'.format(prefix, i+1), 
+						  d=1, 
+						  p=[(-2, 0, 0), 
+							 (-1, 0,-1),
+							 ( 1, 0,-1),
+							 ( 2, 0, 0),
+							 ( 1, 0, 1),
+							 (-1, 0, 1),
+							 (-2, 0, 0)])
+		g = cmds.group(ctrl, n='{}_{:02d}_Grp'.format(prefix, i+1))
+		g_zero = cmds.group(g, n='{}_{:02d}_Grp_Zero'.format(prefix, i+1))
+		ctrls.append((g_zero, g, ctrl))
+		cmds.delete(cmds.parentConstraint(jntList[i], g_zero))
+		cmds.parentConstraint(ctrl, jntList[i])
+
+	for i in range(len(ctrls)):
+		if i+1 < range(len(ctrls)):
+			g_zero, g, c = ctrls[i]
+			g_zero_p1, g_p1, c_p1 = ctrls[i+1]
+			cmds.parent(g_zero_p1, c)
