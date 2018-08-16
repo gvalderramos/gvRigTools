@@ -209,7 +209,7 @@ class RigToolsUI(QWidget):
         sourceSkinListLayout.addWidget(self.sourceSkinBtn)
 
         # button para transferir o skin de uma lista para outra
-        
+
         copySkinBtnWidget = QWidget()
         copyBtnLayout = QVBoxLayout(copySkinBtnWidget)
         skinListLayout.addWidget(copySkinBtnWidget)
@@ -247,7 +247,7 @@ class RigToolsUI(QWidget):
         """
             ###  Remove o overrideColor  ###
         """
-        sl = cmds.ls(sl=True)
+        sl = cmds.ls(sl=True, l=True)
 
         if sl:
             for i in range(len(sl)):
@@ -274,9 +274,9 @@ class RigToolsUI(QWidget):
         """
             ###  adiciona os itens selecionados na lista especifica ###
         """
-        sl = cmds.ls(sl=True)
+        sl = cmds.ls(sl=True, l=True)
         base_dir = os.path.dirname(__file__)+'/icons'
-        
+
 
         objs_accepted = ['mesh', 'nurbsSurface', 'nurbsCurve']
 
@@ -284,7 +284,7 @@ class RigToolsUI(QWidget):
         listWidgetObject.clear()
 
         for i in range(len(sl)):
-            shapes = cmds.listRelatives(sl[i], shapes=True)
+            shapes = cmds.listRelatives(sl[i], shapes=True, noIntermediate=True, fullPath=True)
             if shapes:
                 for shape in shapes:
                     objType = cmds.objectType( shape )
@@ -306,6 +306,7 @@ class RigToolsUI(QWidget):
                         listMesh.append(sl[i])
                         item = QListWidgetItem(geo_icon, sl[i])
                         listWidgetObject.addItem(item)
+        print listMesh
 
     def funcCopySkinBtn(self):
 
@@ -348,7 +349,8 @@ def openColorDialog(self):
 
 def gen_letters(self, length=2):
     """
-        ###  Funcao que gera uma sequencia alfabetica de letras, como por exemplo AAA, AAB, AAC...  ###
+        ###  Funcao que gera uma sequencia alfabetica de letras,
+        # como por exemplo AAA, AAB, AAC...  ###
     """
     # lista com todas as letras
     alphabet = string.ascii_uppercase
@@ -386,7 +388,8 @@ def renamer(self, newName=""):
         suffix = newName.split('@')[-1]
 
         quant = len(sl) # quantidade de objetos
-        letter = gen_letters(self, zeros) # chama a funcao que cria uma lista alfabetica com o length de acordo com a quantidade de @s
+        letter = gen_letters(self, zeros) # chama a funcao que cria uma lista alfabetica
+                                          # com o length de acordo com a quantidade de @s
         # looping para adicionar a sequencia alfabetica no nome
         while True:
             try:
@@ -440,9 +443,12 @@ def copySkin(sources, target):
 
     sourceShapes = shapesQuery(sources)
     targetShapes = shapesQuery(target)
-    
+
     sourceSkinClusters = skinClusterList(sourceShapes)
     targetSkinClusters = skinClusterList(targetShapes)
+
+    print sourceSkinClusters
+    print targetSkinClusters
 
     if targetSkinClusters:
         cmds.delete(targetSkinClusters)
@@ -450,7 +456,13 @@ def copySkin(sources, target):
     influences = [ cmds.skinCluster(skinCl, query=True, inf=True) for skinCl in sourceSkinClusters ]
     jnts = [ jnt for i in influences for jnt in i]
 
-    cmds.skinCluster( jnts, target, tsb=1, ibp=1)
+    if not jnts:
+        print influences, jnts
+        cmds.error("Nao foi encontrado joints na mesh target")
+        return
+
+    print jnts, target
+    cmds.skinCluster(jnts, target, tsb=1, ibp=1)
 
     cmds.select(clear=True)
     for source in sources:
@@ -463,10 +475,11 @@ def shapesQuery(selection):
         ### retorna uma lista com todos os shapes de uma selecao ####
     """
     if type(selection) is ListType:
-        shapes = [cmds.listRelatives(s, shapes=True) for s in selection]
+        shapes = [cmds.listRelatives(s, shapes=True, fullPath=True, noIntermediate=True) for s in selection]
     else:
-        shapes = cmds.listRelatives(selection, shapes=True)
+        shapes = cmds.listRelatives(selection, shapes=True, fullPath=True, noIntermediate=True)
 
+    print shapes
     return shapes
 
 def skinClusterList(shapes):
@@ -477,14 +490,14 @@ def skinClusterList(shapes):
     for obj in shapes:
         if type(obj) is ListType:
             for shape in obj:
-                if cmds.listConnections(shape, type='skinCluster') != None:
+                if not cmds.listConnections(shape, type='skinCluster') == None:
                     skinClusters.append(cmds.listConnections(shape, type='skinCluster'))
         else:
-            if cmds.listConnections(obj, type='skinCluster') != None:
+            if not cmds.listConnections(obj, type='skinCluster') == None:
                     skinClusters.append(cmds.listConnections(obj, type='skinCluster'))
 
     skinClusters = [ shape for obj in skinClusters for shape in obj ]
-    
+
     return skinClusters
 
 x = RigToolsUI()
